@@ -4,124 +4,95 @@
 
 clc;
 clear;
-%% Data and Inputs
-% oil input temperature
-Ti=60;
-% radial force
-W=3000;
-% Estimated Delta T
-delta_T=input('estimated delta_T(delta_T) at centigrade: ');
-% rotational speed
-N=8;
-% pressure
-pressure=0.469;
-P=10^6*pressure;
-% diameter
-d=80;
-%  radial lag
-c=input('radial lag(c) at mm :');
 
-%%
-r=d/2;
-% average tempreture in centigrade
-Tf1=Ti+(delta_T)/2;
-% TF1 at Fahrenheit
-TF1=32+(Tf1*1.8);
-disp(['Tf: ' , num2str(TF1) , 'Farenheit' ]);
-% absolute viscosity
-% with using diagram 12.14
-mu1=input([' with using diagram 12.14 Enter the value of absolute viscosity at' num2str(TF1) ,'Fahrenheit: ' ]);
-disp(['mu(viscosity): ' , num2str(mu1) , 'mureyn']);
-mu_1=mu1*6.89*0.001; 
-% Sommerfeld
-S=((r/c)^2)*mu_1*N/P;
-disp(['S(Sommerfeld): ' , num2str(S)]);
+% Initial Setup
+initialTemp = 60;  % Ti in °C
+loadVal = 3000;    % W in N
+deltaTemp = input('Guess the temperature difference (°C): ');
+revPerSec = 8;     % N
+pressureMPa = 0.469;
+pressurePa = pressureMPa * 1e6;
+diameter = 80;     % mm
+lag = input('Input the radial clearance (mm): ');
 
+radius = diameter / 2;
+midTempC = initialTemp + deltaTemp / 2;
+midTempF = 32 + (midTempC * 1.8);
+fprintf('Temperature (Tf): %.2f °F\n', midTempF);
 
-%find Temperature Rise Dimensionless Variable
-% l/d=1
+viscInput1 = input(sprintf('Using chart 12.14, enter the absolute viscosity at %.2f°F: ', midTempF));
+fprintf('Viscosity: %.3f reyn\n', viscInput1);
+viscPaS1 = viscInput1 * 6.89 * 1e-3;
 
-u=0.349109+S*6.0094+S*S*0.047467;
-Delta_C=(10^-6)*P*u/0.12;
+% Sommerfeld Number
+Sval = ((radius / lag)^2) * viscPaS1 * revPerSec / pressurePa;
+fprintf('Sommerfeld Number: %.6f\n', Sval);
 
-Delta_T_new=(delta_T+Delta_C)/2;
-disp(['Delta_T_new: ' , num2str(Delta_T_new) ,'centigrade']);
+% Coefficients (assuming l/d = 1)
+coeffU = 0.349109 + Sval * 6.0094 + (Sval^2) * 0.047467;
+deltaC = 1e-6 * pressurePa * coeffU / 0.12;
+deltaTempUpdated = (deltaTemp + deltaC) / 2;
+fprintf('Updated ΔT: %.3f °C\n', deltaTempUpdated);
 
-% check mureyn to mpa.s convert
-% check farenheit to centigrade convert
+isClose = input('Is updated ΔT close enough? (Yes = 1 / No = 0): ');
 
-%% 
-% now we should check the Delta_T_new that we fine is
-% correct or not 
-e=input('If Delta_T_new is near to Delta_T Enter 1 else Enter 0 :');
+% Iteration if needed
+while isClose == 0
+    avgTempC = initialTemp + deltaTempUpdated / 2;
+    avgTempF = 32 + (avgTempC * 9 / 5);
 
-while e==0
-    % TF2 at Fahrenheit
-   Tf2=Ti+(Delta_T_new)/2; 
-   TF2=32+(Tf2*9/5);
-   % with using diagram 12.14
-   mu2=input([' with using diagram 12.14 Enter the value of absolute viscosity at' num2str(TF2) , 'Fahrenheit: ']);
-   mu_2=mu2*6.89*0.001; 
-   S=((r/c)^2)*mu_2*N/P;
-   disp(['S(Sommerfeld): ' , num2str(S)]);
-   u=0.349109+S*6.0094+S*S*0.047467;
-   Delta_C=(10^-6)*P*u/0.12;
-   disp(['Delta_C :', num2str(Delta_C)]);
-   Delta_T_new=(Delta_T_new+Delta_C)/2;
-   disp(['Delta_T_new: ' , num2str(Delta_T_new)]);
-   e=input('If Delta_T_new is near to Delta_T Enter 1 else Enter 0 :');
-   
+    viscInputLoop = input(sprintf('Using chart 12.14, enter absolute viscosity at %.2f°F: ', avgTempF));
+    viscPaSLoop = viscInputLoop * 6.89 * 1e-3;
+
+    Sval = ((radius / lag)^2) * viscPaSLoop * revPerSec / pressurePa;
+    fprintf('Sommerfeld Number: %.6f\n', Sval);
+
+    coeffU = 0.349109 + Sval * 6.0094 + (Sval^2) * 0.047467;
+    deltaC = 1e-6 * pressurePa * coeffU / 0.12;
+    fprintf('ΔC: %.5f\n', deltaC);
+
+    deltaTempUpdated = (deltaTempUpdated + deltaC) / 2;
+    fprintf('Updated ΔT: %.3f °C\n', deltaTempUpdated);
+
+    isClose = input('Is updated ΔT now close enough? (Yes = 1 / No = 0): ');
 end
- disp(['final value of Delta_T :' , num2str(Delta_T_new)]);
-%% 
-% now after that find definitive value of Delta_T we have:
 
-Tf_final=Ti+(Delta_T_new/2);
-TF_Final=32+(Tf_final*9/5);
-To=Ti+Delta_T_new;
-  
-mu_final=input(['Enter the value of absolute viscosity at' num2str(TF_Final) , 'Fahrenheit: ']);
-mu_f=mu_final*6.89*0.001; 
-S=((r/c)^2)*mu_f*N/P;
+fprintf('Final ΔT: %.3f °C\n', deltaTempUpdated);
 
-disp(['S(definitive value of Sommerfeld): ' , num2str(S)]);
+% Final calculations
+finalMidTempC = initialTemp + deltaTempUpdated / 2;
+finalMidTempF = 32 + finalMidTempC * 9 / 5;
+finalTemp = initialTemp + deltaTempUpdated;
 
+finalVisc = input(sprintf('Final viscosity value at %.2f°F: ', finalMidTempF));
+viscFinalPaS = finalVisc * 6.89 * 1e-3;
+Sval = ((radius / lag)^2) * viscFinalPaS * revPerSec / pressurePa;
+fprintf('Definitive Sommerfeld Number: %.6f\n', Sval);
 
-% with using diagram 12.16 we read the value of h0/c 
-% h0/c=h1
-h1=input(' with using diagram 12.16  Enter the value of h0/c: ');
-h0=h1*c;
+hRatio = input('Enter h0/c value: ');
+h0 = hRatio * lag;
 
-% with using diagram 12.18 we read the value of rf/c
-%rf/c=r1
-r1=input('with using diagram 12.18 Enter the value of rf/c: ');
-f=r1*c/r;
+rfRatio = input('Enter rf/c value: ');
+fFactor = rfRatio * lag / radius;
 
-% with using diagram 12.19 we read the value of Q/rcNl
-% Q1=Q/rcNl
-Q1=input('with using diagram 12.19 Enter the value of Q/rcNl: ');
-Q=Q1*r*c*N*d;
+Qratio = input('Input Q/(rcNl): ');
+Qactual = Qratio * radius * lag * revPerSec * diameter;
 
-% with using diagram 12.20 we read the value of Qs/Q
-% Q2=Qs/Q
-Q2=input('with using diagram 12.20 Enter the value of Qs/Q: ');
-Qs=Q*Q2;
-% with using diagram 12.21 we read the value of P/Pmax
-% P1= P/Pmax
-P1=input('with using diagram 12.21  Enter the value of P/Pmax: ');
-P_max=(P/P1)*10^(-6);
+QsRatio = input('Enter Qs/Q value: ');
+Qs = Qactual * QsRatio;
 
-%H_loss
-H_loss=f*W*d*pi*N/1000;
+pressureRatio = input('Enter P/Pmax value: ');
+Pmax = (pressurePa / pressureRatio) * 1e-6;
 
-
-%% 
-disp(['S(definitive value of Sommerfeld): ' , num2str(S)]);
-disp(['Tf = ',num2str(Tf_final) , 'centigrade']);
-disp(['To = ',num2str(To) , 'centigrade']);
-disp(['h0 = ',num2str(h0) , 'm']);
-disp(['f = ',num2str(f)]);
-disp(['H_loss = ',num2str(H_loss) ,'Watt']);
-disp(['Q = ',num2str(Q) , ' mm^3/s']);
-disp(['Qs = ',num2str(Qs) , 'mm^3/s']);
-disp(['pmax = ',num2str(P_max),' (Mpa)']);
+% Power loss calculation
+powerLoss = fFactor * loadVal * diameter * pi * revPerSec / 1000;
+%% Results
+fprintf('Final Sommerfeld Number (S) : %.6f\n', Sval);
+fprintf('Mid-film Temperature (Tf)   : %.2f °C\n', finalMidTempC);
+fprintf('Outlet Temperature (To)     : %.2f °C\n', finalTemp);
+fprintf('Minimum Film Thickness (h₀) : %.4f m\n', h0);
+fprintf('Radial Factor (f)           : %.4f\n', fFactor);
+fprintf('Heat Loss (H_loss)          : %.2f W\n', powerLoss);
+fprintf('Volumetric Flow Rate (Q)    : %.2f mm³/s\n', Qactual);
+fprintf('Side Flow (Qs)              : %.2f mm³/s\n', Qs);
+fprintf('Maximum Pressure (Pₘₐₓ)      : %.4f MPa\n', Pmax);
